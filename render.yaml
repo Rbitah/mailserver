@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: mail-server
+    env: node
+    buildCommand: npm install
+    startCommand: node index.js
+    healthCheckPath: /health
+    ports:
+      - port: 2525
+        protocol: tcp

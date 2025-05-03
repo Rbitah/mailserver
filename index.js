@@ -12,10 +12,11 @@ const db = require('./models/database');
 
 const app = express();
 
-// Port Configuration - Use Render's PORT for web and explicit SMTP port
-const WEB_PORT = process.env.PORT || 10000;  // Render assigns PORT env variable
-const SMTP_PORT = 2525;  // Fixed SMTP port for email
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+// Hard-coded production configuration
+const WEB_PORT = 10000;
+const SMTP_PORT = 2525;
+const JWT_SECRET = 'tiyenitickets-jwt-secret-key-production';
+const IS_PRODUCTION = true;
 
 // Middleware
 app.use(cors());
@@ -34,7 +35,7 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: process.env.NODE_ENV === 'production',
+        secure: IS_PRODUCTION,
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
@@ -197,16 +198,26 @@ const smtpServer = new SMTPServer({
     }
 });
 
-// Update SMTP transport configuration to use correct port
+// Update SMTP transport configuration
 const smtpTransport = nodemailer.createTransport({
-    host: '216.24.57.1', // Use public IP or hostname via environment variable
+    host: 'mail.tiyenitickets.site',
     port: SMTP_PORT,
-    secure: false,
-    ignoreTLS: true,
-    requireTLS: false,
+    secure: true,
+    ignoreTLS: false,
+    requireTLS: true,
     tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: true
     }
+});
+
+// Add health check endpoint for Render
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'healthy',
+        web: true,
+        smtp: smtpServer.listening,
+        database: db?.open
+    });
 });
 
 // Update send email endpoint
