@@ -1,0 +1,179 @@
+/* Global styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    background: #f4f4f4;
+}
+
+/* Login styles */
+.login-container {
+    max-width: 400px;
+    margin: 100px auto;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.login-form input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* Email Dashboard styles */
+.mail-container {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 250px;
+    background: #2c3e50;
+    color: white;
+    padding: 20px;
+}
+
+.user-info {
+    padding: 15px 0;
+    border-bottom: 1px solid #34495e;
+}
+
+.compose-btn {
+    width: 100%;
+    padding: 12px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    margin: 15px 0;
+    cursor: pointer;
+}
+
+.folders {
+    list-style: none;
+}
+
+.folders li {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.folders li.active {
+    background: #34495e;
+    border-radius: 4px;
+}
+
+.content {
+    flex: 1;
+    background: white;
+    display: flex;
+}
+
+.email-list {
+    width: 40%;
+    border-right: 1px solid #ddd;
+    overflow-y: auto;
+}
+
+.email-item {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.email-item:hover {
+    background: #f9f9f9;
+}
+
+.email-item.unread {
+    font-weight: bold;
+    background: #f5f5f5;
+}
+
+.email-view {
+    flex: 1;
+    padding: 20px;
+}
+
+.email-actions {
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.email-actions button {
+    padding: 8px 15px;
+    margin-right: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Compose Modal */
+.compose-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.compose-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 600px;
+}
+
+.compose-content input,
+.compose-content textarea {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.compose-content textarea {
+    height: 200px;
+    resize: vertical;
+}
+
+.compose-actions {
+    text-align: right;
+}
+
+.compose-actions button {
+    padding: 8px 15px;
+    margin-left: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Loading Screen */
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #2c3e50;
+}

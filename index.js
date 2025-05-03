@@ -1,0 +1,263 @@
+const path = require('path');
+const express = require('express');
+const { SMTPServer } = require('smtp-server');
+const nodemailer = require('nodemailer');
+const { simpleParser } = require('mailparser');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const session = require('express-session');
+const cors = require('cors');
+const db = require('./models/database');
+
+const app = express();
+const PORT = process.env.PORT || 2525;
+const WEB_PORT = process.env.WEB_PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
+app.set('view engine', 'ejs');
+
+app.use(session({
+    secret: JWT_SECRET,
+    resave: false,
+    saveUninitialized: false
+}));
+
+// Authentication middleware
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    console.log('Auth header:', authHeader);
+    console.log('Token:', token);
+
+    if (!token) {
+        console.log('No token provided');
+        return res.status(401).json({ error: 'Access denied - No token provided' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        console.log('Successfully decoded token:', decoded);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        console.error('Token verification error:', error);
+        res.status(403).json({ error: 'Invalid token - ' + error.message });
+    }
+};
+
+// Web Routes
+app.get('/', (req, res) => res.render('login'));
+app.get('/register', (req, res) => res.render('register'));
+app.get('/dashboard', (req, res) => {
+    res.render('dashboard');
+});
+
+// Add a new route to fetch user data
+app.get('/api/user', authenticateToken, async (req, res) => {
+    try {
+        const user = await getUserById(req.user.userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const emails = await getEmails(user.email);
+        res.json({ user, emails });
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// API Routes
+app.post('/api/users', async (req, res) => {
+    const { email, password, name } = req.body;
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        db.run('INSERT INTO users (email, password, name) VALUES (?, ?, ?)',
+            [email, hashedPassword, name],
+            (err) => {
+                if (err) return res.status(400).json({ error: 'User already exists' });
+                res.status(201).json({ message: 'User created successfully' });
+            });
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.post('/api/login', (req, res) => {
+    const { email, password } = req.body;
+    db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
+        if (err || !user) return res.status(401).json({ error: 'Invalid credentials' });
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+        
+        const token = jwt.sign({ 
+            userId: user.id,
+            email: user.email 
+        }, JWT_SECRET);
+        res.json({ token });
+    });
+});
+
+app.get('/api/emails', authenticateToken, (req, res) => {
+    const { folder = 'inbox' } = req.query;
+    let query;
+    let params;
+
+    if (folder === 'sent') {
+        query = 'SELECT * FROM emails WHERE from_email = ? AND folder = ? ORDER BY received_date DESC';
+        params = [req.user.email, 'sent'];
+    } else {
+        query = 'SELECT * FROM emails WHERE to_email = ? AND folder = ? ORDER BY received_date DESC';
+        params = [req.user.email, folder];
+    }
+
+    db.all(query, params, (err, emails) => {
+        if (err) {
+            console.error('Error fetching emails:', err);
+            return res.status(500).json({ error: 'Server error' });
+        }
+        res.json(emails);
+    });
+});
+
+app.get('/api/emails/:id', authenticateToken, (req, res) => {
+    db.get('SELECT * FROM emails WHERE id = ?', [req.params.id], (err, email) => {
+        if (err) return res.status(500).json({ error: 'Server error' });
+        if (!email) return res.status(404).json({ error: 'Email not found' });
+        
+        // Mark email as read
+        db.run('UPDATE emails SET read = 1 WHERE id = ?', [req.params.id]);
+        res.json(email);
+    });
+});
+
+app.delete('/api/emails/:id', authenticateToken, (req, res) => {
+    db.run(
+        'UPDATE emails SET folder = ? WHERE id = ?',
+        ['trash', req.params.id],
+        (err) => {
+            if (err) return res.status(500).json({ error: 'Server error' });
+            res.json({ message: 'Email moved to trash' });
+        }
+    );
+});
+
+// SMTP Server configuration
+const smtpServer = new SMTPServer({
+    secure: false,
+    size: 50 * 1024 * 1024, // 50MB max email size
+    authOptional: true, // Make authentication optional
+    disabledCommands: ['STARTTLS'], // Disable STARTTLS requirement
+    onAuth(auth, session, callback) {
+        if (!auth) {
+            // Allow unauthenticated for local testing
+            return callback(null, { user: 'anonymous' });
+        }
+        db.get('SELECT * FROM users WHERE email = ?', [auth.username], async (err, user) => {
+            if (err || !user) return callback(new Error('Invalid username or password'));
+            const match = await bcrypt.compare(auth.password, user.password);
+            if (!match) return callback(new Error('Invalid username or password'));
+            callback(null, { user: auth.username });
+        });
+    },
+    onMailFrom(address, session, callback) {
+        // Allow sending from authenticated user's email
+        callback();
+    },
+    onRcptTo(address, session, callback) {
+        // Accept all recipients for now
+        callback();
+    },
+    onData(stream, session, callback) {
+        simpleParser(stream).then(parsed => {
+            const { from, to, subject, text, html } = parsed;
+            db.run(
+                'INSERT INTO emails (from_email, to_email, subject, body, html, folder) VALUES (?, ?, ?, ?, ?, ?)',
+                [from.text, to.text, subject, text, html, 'inbox'],
+                callback
+            );
+        }).catch(callback);
+    }
+});
+
+// Update SMTP transport configuration
+const smtpTransport = nodemailer.createTransport({
+    host: 'localhost',
+    port: 2525,
+    secure: false,
+    ignoreTLS: true, // Ignore TLS for local testing
+    requireTLS: false, // Disable TLS requirement
+    tls: {
+        rejectUnauthorized: false
+    }
+});
+
+// Update send email endpoint
+app.post('/api/send-email', authenticateToken, async (req, res) => {
+    const { to, subject, text } = req.body;
+    
+    try {
+        const mailOptions = {
+            from: req.user.email,
+            to: to,
+            subject: subject,
+            text: text,
+            envelope: {
+                from: req.user.email,
+                to: to
+            }
+        };
+
+        console.log('Attempting to send email:', mailOptions);
+        const info = await smtpTransport.sendMail(mailOptions);
+        console.log('Email sent successfully:', info);
+
+        // Store in sent folder
+        db.run(
+            'INSERT INTO emails (from_email, to_email, subject, body, folder) VALUES (?, ?, ?, ?, ?)',
+            [req.user.email, to, subject, text, 'sent'],
+            (err) => {
+                if (err) {
+                    console.error('Error storing sent email:', err);
+                }
+            }
+        );
+
+        res.json({ message: 'Email sent successfully', info });
+    } catch (error) {
+        console.error('Error sending email:', error);
+        res.status(500).json({ error: 'Failed to send email: ' + error.message });
+    }
+});
+
+// Helper functions
+async function getUserById(id) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT id, email, name FROM users WHERE id = ?', [id], (err, user) => {
+            if (err) reject(err);
+            resolve(user);
+        });
+    });
+}
+
+async function getEmails(email) {
+    return new Promise((resolve, reject) => {
+        db.all('SELECT * FROM emails WHERE to_email = ? ORDER BY received_date DESC', [email], (err, emails) => {
+            if (err) reject(err);
+            resolve(emails);
+        });
+    });
+}
+
+// Start servers
+smtpServer.listen(PORT, '0.0.0.0', () => {
+    console.log(`SMTP server listening on port ${PORT}`);
+});
+
+app.listen(WEB_PORT, () => {
+    console.log(`Web server listening on port ${WEB_PORT}`);
+});

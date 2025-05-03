@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TiyeniTickets Mail - Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="mail-container" style="display: none;">
+        <aside class="sidebar">
+            <div class="user-info">
+                <!-- User info will be populated by JavaScript -->
+            </div>
+            <button class="compose-btn">Compose</button>
+            <ul class="folders">
+                <li class="active" data-folder="inbox">Inbox</li>
+                <li data-folder="sent">Sent</li>
+                <li data-folder="drafts">Drafts</li>
+                <li data-folder="trash">Trash</li>
+            </ul>
+        </aside>
+        
+        <main class="content">
+            <div class="email-list"></div>
+            <div class="email-view" style="display: none;">
+                <div class="email-actions">
+                    <button class="reply-btn">Reply</button>
+                    <button class="delete-btn">Delete</button>
+                </div>
+                <div class="email-content"></div>
+            </div>
+        </main>
+    </div>
+
+    <div class="loading-screen">
+        Loading...
+    </div>
+
+    <!-- Compose Email Modal -->
+    <div class="compose-modal" style="display: none;">
+        <div class="compose-content">
+            <form id="composeForm">
+                <input type="email" name="to" placeholder="To" required>
+                <input type="text" name="subject" placeholder="Subject" required>
+                <textarea name="body" placeholder="Write your message..." required></textarea>
+                <div class="compose-actions">
+                    <button type="button" class="cancel-btn">Cancel</button>
+                    <button type="submit">Send</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Make token available to dashboard.js
+        window.authToken = localStorage.getItem('token');
+        if (!window.authToken) {
+            window.location.href = '/';
+        }
+    </script>
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>
