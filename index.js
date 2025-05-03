@@ -6,11 +6,13 @@ const { simpleParser } = require('mailparser');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
 const cors = require('cors');
 const db = require('./models/database');
 
 const app = express();
 const PORT = process.env.PORT || 2525;
+const SMTP_PORT = process.env.SMTP_PORT || PORT;
 const WEB_PORT = process.env.WEB_PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -20,10 +22,20 @@ app.use(express.json());
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 
+// Configure session with SQLite store
 app.use(session({
+    store: new SQLiteStore({
+        dir: './data',
+        db: 'sessions.db',
+        table: 'sessions'
+    }),
     secret: JWT_SECRET,
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
 }));
 
 // Authentication middleware
@@ -254,8 +266,8 @@ async function getEmails(email) {
 }
 
 // Start servers
-smtpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`SMTP server listening on port ${PORT}`);
+smtpServer.listen(SMTP_PORT, '0.0.0.0', () => {
+    console.log(`SMTP server listening on port ${SMTP_PORT}`);
 });
 
 app.listen(WEB_PORT, () => {
