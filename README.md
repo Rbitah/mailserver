@@ -50,7 +50,7 @@ Add these DNS records to ensure proper email delivery to Gmail and other provide
 
 1. Test SMTP connection:
 ```bash
-telnet mail.tiyenitickets.site 2525
+telnet mail.tiyenitickets.site 10000
 ```
 
 2. Send a test email through the web interface at:

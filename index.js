@@ -11,8 +11,10 @@ const cors = require('cors');
 const db = require('./models/database');
 
 const app = express();
-const SMTP_PORT = process.env.SMTP_PORT || 10000; // Update SMTP port to 10000
-const WEB_PORT = process.env.PORT || 3000;
+
+// Port Configuration
+const WEB_PORT = process.env.PORT || 3000;  // Web interface port
+const SMTP_PORT = process.env.SMTP_PORT || 2525;  // SMTP server port
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Middleware
@@ -198,7 +200,7 @@ const smtpServer = new SMTPServer({
 // Update SMTP transport configuration to use correct port
 const smtpTransport = nodemailer.createTransport({
     host: 'localhost',
-    port: SMTP_PORT, // Use the same SMTP port as the server
+    port: SMTP_PORT,
     secure: false,
     ignoreTLS: true,
     requireTLS: false,
@@ -264,11 +266,41 @@ async function getEmails(email) {
     });
 }
 
-// Start servers
-smtpServer.listen(SMTP_PORT, '0.0.0.0', () => {
-    console.log(`SMTP server listening on port ${SMTP_PORT}`);
-});
+// Start servers with proper error handling
+const startServers = async () => {
+    try {
+        // Start web server
+        await new Promise((resolve, reject) => {
+            const webServer = app.listen(WEB_PORT, () => {
+                console.log(`Web server listening on port ${WEB_PORT}`);
+                resolve();
+            });
+            webServer.on('error', (error) => {
+                if (error.code === 'EADDRINUSE') {
+                    console.error(`Port ${WEB_PORT} is already in use for web server`);
+                }
+                reject(error);
+            });
+        });
 
-app.listen(WEB_PORT, () => {
-    console.log(`Web server listening on port ${WEB_PORT}`);
-});
+        // Start SMTP server
+        await new Promise((resolve, reject) => {
+            smtpServer.listen(SMTP_PORT, '0.0.0.0', () => {
+                console.log(`SMTP server listening on port ${SMTP_PORT}`);
+                resolve();
+            });
+            smtpServer.on('error', (error) => {
+                if (error.code === 'EADDRINUSE') {
+                    console.error(`Port ${SMTP_PORT} is already in use for SMTP server`);
+                }
+                reject(error);
+            });
+        });
+    } catch (error) {
+        console.error('Failed to start servers:', error);
+        process.exit(1);
+    }
+};
+
+// Start the servers
+startServers();
