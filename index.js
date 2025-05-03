@@ -200,13 +200,13 @@ const smtpServer = new SMTPServer({
 
 // Update SMTP transport configuration
 const smtpTransport = nodemailer.createTransport({
-    host: 'mail.tiyenitickets.site',
+    host: 'localhost',  // Use localhost since SMTP server is on same machine
     port: SMTP_PORT,
-    secure: true,
-    ignoreTLS: false,
-    requireTLS: true,
+    secure: false,
+    ignoreTLS: true,
+    requireTLS: false,
     tls: {
-        rejectUnauthorized: true
+        rejectUnauthorized: false
     }
 });
 
