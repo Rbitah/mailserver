@@ -12,9 +12,9 @@ const db = require('./models/database');
 
 const app = express();
 
-// Port Configuration
-const WEB_PORT = process.env.PORT || 3000;  // Web interface port
-const SMTP_PORT = process.env.SMTP_PORT || 2525;  // SMTP server port
+// Port Configuration - Use Render's PORT for web and explicit SMTP port
+const WEB_PORT = process.env.PORT || 10000;  // Render assigns PORT env variable
+const SMTP_PORT = 2525;  // Fixed SMTP port for email
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Middleware
@@ -199,7 +199,7 @@ const smtpServer = new SMTPServer({
 
 // Update SMTP transport configuration to use correct port
 const smtpTransport = nodemailer.createTransport({
-    host: 'localhost',
+    host: '216.24.57.1', // Use public IP or hostname via environment variable
     port: SMTP_PORT,
     secure: false,
     ignoreTLS: true,

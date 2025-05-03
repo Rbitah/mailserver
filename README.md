@@ -1,10 +1,14 @@
 # Haraka Mail Server for tiyenitickets.site
 
 ## Features
-- Accepts mail for `tiyenitickets.site`
-- Listens on port `2525` for compatibility with Render
-- Simple plugin setup
-- Send/receive emails with Gmail and other providers
+- Web interface for email management
+- SMTP server for sending/receiving emails
+- User authentication and email folders
+- Database storage for emails and users
+
+## Port Configuration
+- Web Interface: Runs on port 10000 (or PORT environment variable on Render)
+- SMTP Server: Fixed on port 2525 (standard SMTP submission port)
 
 ## Deploy to Render
 
@@ -14,11 +18,14 @@
    - Environment: Node
    - Build Command: `npm install`
    - Start Command: `npm start`
-   - Port: `2525`
+   - Environment Variables:
+     - `PORT`: Will be set automatically by Render
+     - `JWT_SECRET`: Set your own secure secret
+   - Open Ports: Both 2525 and web port will be available
 
 ## DNS Setup for tiyenitickets.site
 
-Add these DNS records to ensure proper email delivery to Gmail and other providers:
+Add these DNS records to ensure proper email delivery:
 
 - **MX Record**:  
   - Type: `MX`  
@@ -29,7 +36,7 @@ Add these DNS records to ensure proper email delivery to Gmail and other provide
 - **A Record**:  
   - Type: `A`  
   - Name: `mail`  
-  - Value: `<Render public IP or CNAME>`
+  - Value: `<Render public IP>`
 
 - **SPF Record**:  
   - Type: `TXT`  
@@ -41,32 +48,40 @@ Add these DNS records to ensure proper email delivery to Gmail and other provide
   - Name: `_dmarc`
   - Value: `v=DMARC1; p=none; rua=mailto:postmaster@tiyenitickets.site`
 
-- **PTR Record** (Reverse DNS):
-  - Contact your hosting provider to set up reverse DNS for your server's IP to point to mail.tiyenitickets.site
+## Local Development
 
-> Important: After adding these records, wait for DNS propagation (24-48 hours) before testing with Gmail.
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the server:
+   ```bash
+   npm start
+   ```
+4. Access:
+   - Web Interface: http://localhost:10000
+   - SMTP: localhost:2525
 
 ## Testing Email Delivery
 
 1. Test SMTP connection:
 ```bash
-telnet mail.tiyenitickets.site 10000
+telnet localhost 2525
 ```
 
-2. Send a test email through the web interface at:
+2. Send a test email through the web interface:
 ```
-http://mail.tiyenitickets.site:3000
+http://localhost:10000
 ```
 
-## Troubleshooting Gmail Delivery
+## Troubleshooting
 
-If emails are not reaching Gmail:
+1. Port conflicts:
+   - Web port (10000) can be changed via PORT environment variable
+   - SMTP port (2525) is fixed for consistent email routing
 
-1. Check Gmail spam folder
-2. Verify all DNS records are properly propagated using:
-   ```bash
-   dig TXT tiyenitickets.site
-   dig MX tiyenitickets.site
-   dig TXT _dmarc.tiyenitickets.site
-   ```
-3. Make sure your server's IP is not blacklisted
+2. Email Delivery:
+   - Check spam folders
+   - Verify DNS records
+   - Ensure Render ports are properly exposed
