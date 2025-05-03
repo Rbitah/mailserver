@@ -11,9 +11,8 @@ const cors = require('cors');
 const db = require('./models/database');
 
 const app = express();
-const PORT = process.env.PORT || 2525;
-const SMTP_PORT = process.env.SMTP_PORT || PORT;
-const WEB_PORT = process.env.WEB_PORT || 3000;
+const SMTP_PORT = process.env.SMTP_PORT || 10000; // Update SMTP port to 10000
+const WEB_PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Middleware
@@ -196,13 +195,13 @@ const smtpServer = new SMTPServer({
     }
 });
 
-// Update SMTP transport configuration
+// Update SMTP transport configuration to use correct port
 const smtpTransport = nodemailer.createTransport({
     host: 'localhost',
-    port: 2525,
+    port: SMTP_PORT, // Use the same SMTP port as the server
     secure: false,
-    ignoreTLS: true, // Ignore TLS for local testing
-    requireTLS: false, // Disable TLS requirement
+    ignoreTLS: true,
+    requireTLS: false,
     tls: {
         rejectUnauthorized: false
     }
