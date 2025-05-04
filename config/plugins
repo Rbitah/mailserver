@@ -3,4 +3,7 @@ helo
 mail_from.is_resolvable
 rcpt_to.in_host_list
 data.headers
+tls
+auth
+queue/smtp_forward
 queue/file

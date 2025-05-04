@@ -200,14 +200,24 @@ const smtpServer = new SMTPServer({
 
 // Update SMTP transport configuration
 const smtpTransport = nodemailer.createTransport({
-    host: 'localhost',  // Use localhost since SMTP server is on same machine
+    service: 'gmail',
+    auth: {
+        user: 'rbitah@gmail.com',
+        pass: 'nmrn gdbr hsdw vite'  // Gmail App Password
+    },
+    debug: true,
+    logger: true
+});
+
+// Add a backup local transport for internal emails
+const localSmtpTransport = nodemailer.createTransport({
+    host: 'localhost',
     port: SMTP_PORT,
     secure: false,
     ignoreTLS: true,
     requireTLS: false,
-    tls: {
-        rejectUnauthorized: false
-    }
+    debug: true,
+    logger: true
 });
 
 // Add health check endpoint for Render
@@ -220,13 +230,16 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Update send email endpoint
+// Update send email endpoint to use appropriate transport
 app.post('/api/send-email', authenticateToken, async (req, res) => {
     const { to, subject, text } = req.body;
     
     try {
         const mailOptions = {
-            from: req.user.email,
+            from: {
+                name: req.user.name || 'TiyeniTickets Mail',
+                address: req.user.email
+            },
             to: to,
             subject: subject,
             text: text,
@@ -237,7 +250,12 @@ app.post('/api/send-email', authenticateToken, async (req, res) => {
         };
 
         console.log('Attempting to send email:', mailOptions);
-        const info = await smtpTransport.sendMail(mailOptions);
+        
+        // Choose transport based on recipient domain
+        const isInternalEmail = to.endsWith('@tiyenitickets.site');
+        const transport = isInternalEmail ? localSmtpTransport : smtpTransport;
+        
+        const info = await transport.sendMail(mailOptions);
         console.log('Email sent successfully:', info);
 
         // Store in sent folder
